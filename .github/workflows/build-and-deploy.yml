@@ -70,9 +70,12 @@ jobs:
       - run: |
           echo "global:"           >  /tmp/secret-values.yaml
           echo "  backingStores:"  >> /tmp/secret-values.yaml
-          echo "${{ steps.gsm.outputs.COMMON_ENV }}" | sed '1s/^\xEF\xBB\xBF//' | \
-            jq -r 'to_entries[] | "    \(.key): \"\(.value)\""' \
-            >> /tmp/secret-values.yaml
+          printf '%b' "$RAW_COMMON"            \
+          | sed '1s/^\xEF\xBB\xBF//'         \
+          | jq -r 'to_entries[] | "    \(.key): \"\(.value)\""' \
+          >> /tmp/secret-values.yaml
+
+          cat /tmp/secret-values.yaml
 
       - uses: azure/setup-helm@v4
       - run: |
