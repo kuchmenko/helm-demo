@@ -19,8 +19,21 @@ spec:
             - configMapRef: { name: {{ include "lib.fullname" . }}-cfg }
             - secretRef:    { name: {{ include "lib.fullname" . }}-stores }
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.targetPort | default .Values.service.port }}
           readinessProbe:
-            httpGet: { path: /healthz, port: {{ .Values.service.port }} }
-            initialDelaySeconds: 5
+            httpGet: 
+              path: /healthz
+              port: {{ .Values.service.targetPort | default .Values.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: 
+              path: /healthz
+              port: {{ .Values.service.targetPort | default .Values.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources: {{- toYaml .Values.resources | nindent 12 }}

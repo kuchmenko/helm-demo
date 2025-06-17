@@ -10,9 +10,9 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// app.get('/test', (c) => {
-//   return c.json({ ...process.env })
-// })
+app.get('/healthz', (c) => {
+  return c.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
 
 
 const server = Bun.serve({

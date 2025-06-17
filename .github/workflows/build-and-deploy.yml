@@ -119,6 +119,22 @@ jobs:
 
           echo "Deploying ${APP} to namespace ${NAMESPACE} using ${ENV_FILE}.yaml"
 
+          # Check for stuck releases and clean them up
+          echo "🔍 Checking for stuck releases..."
+          if helm status "$APP" -n "$NAMESPACE" 2>/dev/null | grep -q "pending"; then
+            echo "⚠️ Found stuck release, attempting to clean up..."
+            
+            # Try to get the pending secret and delete it
+            PENDING_SECRET=$(kubectl get secrets -n "$NAMESPACE" | grep "${APP}.*pending" | awk '{print $1}' || echo "")
+            if [[ -n "$PENDING_SECRET" ]]; then
+              echo "🗑️ Deleting stuck secret: $PENDING_SECRET"
+              kubectl delete secret "$PENDING_SECRET" -n "$NAMESPACE" || true
+            fi
+            
+            # Wait a bit for cleanup
+            sleep 10
+          fi
+
           # Function to show debugging info on failure
           show_debug_info() {
             echo "::group::📊 Deployment Status"
@@ -192,7 +208,7 @@ jobs:
           fi
 
           echo "✅ Deployment successful!"
-
+          
           # Show final status
           echo "::group::✨ Final Status"
           helm status "$APP" -n "$NAMESPACE"

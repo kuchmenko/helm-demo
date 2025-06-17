@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   tag: "{{ .Values.global.gitSha }}"
 service:
-  port: 8080
+  port: 3000
 
 command: ["bun"]
 args: ["dist/index.js"]
@@ -16,3 +16,4 @@ terminationGrace: 30
 
 config:
   API_GW_VALUE: "60000"
+  PORT: 3000
