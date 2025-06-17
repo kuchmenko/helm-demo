@@ -2,7 +2,7 @@ name: Build & Deploy
 
 on:
   push:
-    branches: [develop, main] # ← вместо master
+    branches: [develop, main]
     paths: ["apps/**", "infra/**"]
 
 permissions:
@@ -90,7 +90,7 @@ jobs:
           gcloud container clusters get-credentials "$CLUSTER_NAME" \
             --region "$REGION" --project "$PROJECT_ID"
 
-      - name: Helm upgrade / install
+      - name: Helm upgrade / install with auto-rollback
         env:
           IMAGE_TAG: ${{ steps.meta.outputs.version }}
           REGISTRY: ${{ env.REGISTRY }}
@@ -119,12 +119,82 @@ jobs:
 
           echo "Deploying ${APP} to namespace ${NAMESPACE} using ${ENV_FILE}.yaml"
 
-          helm upgrade "$APP" "$CHART_DIR" \
-          -n "$NAMESPACE" --create-namespace \
-          -f infrastructure/globals/values-common.yaml \
-          -f /tmp/secret-values.yaml \
-          -f "$CHART_DIR/values/$ENV_FILE.yaml" \
-          --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${APP}/${APP} \
-          --set image.tag="$IMAGE_TAG" \
-          --set global.gitSha="$GITHUB_SHA" \
-          --install --wait --timeout 5m
+          # Function to show debugging info on failure
+          show_debug_info() {
+            echo "::group::📊 Deployment Status"
+            echo "Helm release status:"
+            helm status "$APP" -n "$NAMESPACE" || true
+            
+            echo "::endgroup::"
+            
+            echo "::group::🔍 Pod Status"
+            echo "Current pods in namespace ${NAMESPACE}:"
+            kubectl get pods -n "$NAMESPACE" -l "app.kubernetes.io/instance=${APP}" -o wide || true
+            
+            echo "::endgroup::"
+            
+            echo "::group::📝 Pod Events"
+            echo "Recent events:"
+            kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' --field-selector involvedObject.kind=Pod | tail -20 || true
+            
+            echo "::endgroup::"
+            
+            echo "::group::📋 Pod Logs"
+            # Get logs from all pods related to this app
+            PODS=$(kubectl get pods -n "$NAMESPACE" -l "app.kubernetes.io/instance=${APP}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+            
+            if [[ -n "$PODS" ]]; then
+              for pod in $PODS; do
+                echo "--- Logs for pod: $pod ---"
+                kubectl logs "$pod" -n "$NAMESPACE" --tail=50 --previous=false || echo "No logs available for $pod"
+                
+                # Also try to get previous container logs if pod restarted
+                kubectl logs "$pod" -n "$NAMESPACE" --tail=50 --previous=true 2>/dev/null && echo "--- Previous logs for $pod ---" || true
+                echo ""
+              done
+            else
+              echo "No pods found for app ${APP} in namespace ${NAMESPACE}"
+            fi
+            
+            echo "::endgroup::"
+            
+            echo "::group::🔧 Pod Descriptions"
+            if [[ -n "$PODS" ]]; then
+              for pod in $PODS; do
+                echo "--- Description for pod: $pod ---"
+                kubectl describe pod "$pod" -n "$NAMESPACE" | tail -30 || true
+                echo ""
+              done
+            fi
+            echo "::endgroup::"
+          }
+
+          # Attempt deployment with atomic rollback
+          if ! helm upgrade "$APP" "$CHART_DIR" \
+            -n "$NAMESPACE" --create-namespace \
+            -f infrastructure/globals/values-common.yaml \
+            -f /tmp/secret-values.yaml \
+            -f "$CHART_DIR/values/$ENV_FILE.yaml" \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${APP}/${APP} \
+            --set image.tag="$IMAGE_TAG" \
+            --set global.gitSha="$GITHUB_SHA" \
+            --install --wait --timeout 5m --atomic; then
+            
+            echo "::error::❌ Helm deployment failed!"
+            show_debug_info
+            
+            echo "::group::🔄 Rollback Status"
+            echo "Checking if rollback occurred..."
+            helm history "$APP" -n "$NAMESPACE" | tail -5 || true
+            echo "::endgroup::"
+            
+            exit 1
+          fi
+
+          echo "✅ Deployment successful!"
+
+          # Show final status
+          echo "::group::✨ Final Status"
+          helm status "$APP" -n "$NAMESPACE"
+          kubectl get pods -n "$NAMESPACE" -l "app.kubernetes.io/instance=${APP}" -o wide
+          echo "::endgroup::"
