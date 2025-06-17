@@ -127,4 +127,4 @@ jobs:
           --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${APP}/${APP} \
           --set image.tag="$IMAGE_TAG" \
           --set global.gitSha="$GITHUB_SHA" \
-          --install --wait --timeout 10m
+          --install --wait --timeout 5m
