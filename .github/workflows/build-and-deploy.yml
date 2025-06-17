@@ -77,23 +77,17 @@ jobs:
 
           cat /tmp/secret-values.yaml
 
-            # ─── 1. ставим gke-gcloud-auth-plugin через apt ───
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
+      - name: Add gke-gcloud-auth-plugin to PATH
+        run: echo "/usr/lib/google-cloud-sdk/bin" >> "$GITHUB_PATH"
 
-      # ─── 2. получаем креды ───
       - name: Get GKE credentials
         run: |
           gcloud container clusters get-credentials "$CLUSTER_NAME" \
             --region "$REGION" --project "$PROJECT_ID"
 
-      # ─── 3. Helm dependency build ───
       - name: Helm dependency build
         run: helm dependency build infrastructure/services/${{ matrix.app }}
 
-      # ─── 4. Helm upgrade ───
       - name: Helm upgrade
         run: |
           ENV_FILE=$(test "${{ github.ref_name }}" = "main" && echo prd || echo dev)
