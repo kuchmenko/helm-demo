@@ -1,0 +1,6 @@
+dependencies:
+- name: library
+  repository: file://../../globals/library
+  version: 0.1.0
+digest: sha256:d7c3336a1650bf783631037587bc18060c585d30a1065c27f101b55af5bc2377
+generated: "2025-06-16T18:34:45.11276976+03:00"

@@ -1,0 +1,5 @@
+image:
+  tag: "dev-{{ .Values.global.gitSha }}"
+
+config:
+  INDEX_INTERVAL: "15000"

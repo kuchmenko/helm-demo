@@ -1,0 +1,15 @@
+replicaCount: 2 # default replicas (dev)
+
+image:
+  tag: "{{ .Values.global.gitSha }}"
+service:
+  port: 42069
+
+resources:
+  limits: { cpu: 800m, memory: 512Mi }
+  requests: { cpu: 300m, memory: 256Mi }
+
+terminationGrace: 30
+
+config:
+  INDEX_INTERVAL: "60000"
