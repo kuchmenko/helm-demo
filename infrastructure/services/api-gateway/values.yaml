@@ -2,9 +2,14 @@ replicaCount: 1
 
 image:
   tag: "{{ .Values.global.gitSha }}"
+
 service:
-  port: 80          
+  type: ClusterIP
+  port: 80
   targetPort: 3000
+  loadBalancer:
+    enabled: false
+    staticIP: ""
 
 command: ["bun"]
 args: ["dist/index.js"]

@@ -4,5 +4,11 @@ resources:
   limits: { cpu: "1", memory: 1Gi }
   requests: { cpu: 400m, memory: 512Mi }
 
+service:
+  type: LoadBalancer
+  loadBalancer:
+    enabled: true
+    staticIP: "api-gateway-ip"
+
 config:
   INDEX_INTERVAL: "30000"

@@ -3,9 +3,18 @@ kind: Service
 metadata:
   name: {{ include "lib.fullname" . }}
   labels: {{ include "lib.labels" . | nindent 4 }}
+  {{- if .Values.service.loadBalancer.enabled }}
+  annotations:
+    cloud.google.com/load-balancer-type: External
+    {{- if .Values.service.loadBalancer.staticIP }}
+    cloud.google.com/static-ip: {{ .Values.service.loadBalancer.staticIP }}
+    {{- end }}
+  {{- end }}
 spec:
+  type: {{ .Values.service.type }}
   selector: {{ include "lib.selector" . | nindent 4 }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
+      name: http
