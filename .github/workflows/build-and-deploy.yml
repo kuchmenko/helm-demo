@@ -79,7 +79,6 @@ jobs:
 
       - uses: azure/setup-helm@v4
       - run: |
-          gcloud components install gke-gcloud-auth-plugin --quiet
           gcloud container clusters get-credentials "$CLUSTER_NAME" \
             --region "$REGION" --project "$PROJECT_ID"
 
