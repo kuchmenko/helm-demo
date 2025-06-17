@@ -1,9 +1,12 @@
-replicaCount: 2 # default replicas (dev)
+replicaCount: 1
 
 image:
   tag: "{{ .Values.global.gitSha }}"
 service:
   port: 8080
+
+command: ["bun"]
+args: ["dist/index.js"]
 
 resources:
   limits: { cpu: 800m, memory: 512Mi }
