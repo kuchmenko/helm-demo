@@ -62,12 +62,15 @@ jobs:
             COMMON_ENV:projects/${{ secrets.GCP_PROJECT_ID }}/secrets/COMMON_ENV/versions/latest
 
       - name: make secret-values
+        env:
+          COMMON_JSON: ${{ steps.gsm.outputs.COMMON_ENV }}
         run: |
           echo "global:"           >  /tmp/secret-values.yaml
           echo "  backingStores:"  >> /tmp/secret-values.yaml
+
+          echo "$COMMON_JSON" | sed '1s/^\xEF\xBB\xBF//' | \
           jq -r 'to_entries|.[]|"    \(.key): \"\(.value)\""' \
-             <<<"${{ steps.gsm.outputs.COMMON_ENV }}" \
-             >> /tmp/secret-values.yaml
+              >> /tmp/secret-values.yaml
 
       - uses: azure/setup-helm@v4
 

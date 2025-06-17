@@ -10,13 +10,17 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// app.get('/test', (c) => {
+//   return c.json({ ...process.env })
+// })
+
 
 const server = Bun.serve({
   port: process.env.PORT || 3001,
   fetch: app.fetch,
 })
 
-//test 8
+//test 9
 
 console.log(`🚀 Api Gateway running on port ${server.port}`)
 
