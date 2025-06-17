@@ -7,9 +7,12 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 3000
-  loadBalancer:
-    enabled: false
-    staticIP: ""
+
+ingress:
+  enabled: false
+  host: ""
+  staticIP: ""
+  className: "gce"
 
 command: ["bun"]
 args: ["dist/index.js"]
