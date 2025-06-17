@@ -89,16 +89,19 @@ jobs:
         run: helm dependency build infrastructure/services/${{ matrix.app }}
       - name: Helm upgrade / install
         run: |
-          set -e
+          set -euo pipefail
 
-          # 1. путь к чарту (один на приложение)
-          CHART_DIR=infrastructure/services/${{ matrix.app }}
+          APP="${{ matrix.app }}"
+          CHART_DIR="infrastructure/services/${APP}"
 
-          # 2. качаем зависимости чарта (если есть)
-          helm dependency build "$CHART_DIR"
+          if [[ ! -f "${CHART_DIR}/Chart.yaml" ]]; then
+            echo "::error ::Chart not found at ${CHART_DIR}"
+            exit 1
+          fi
 
-          # 3. выбираем env-overlay и namespace по ветке
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
+          helm dependency build "${CHART_DIR}"
+
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             ENV_FILE=prd
             NAMESPACE=prd
           else
@@ -106,14 +109,14 @@ jobs:
             NAMESPACE=default
           fi
 
-          # 4. собственно deploy
-          helm upgrade "${{ matrix.app }}" "$CHART_DIR" \
-            -n "$NAMESPACE" \
+          echo "Deploying ${APP} to namespace ${NAMESPACE} using ${ENV_FILE}.yaml"
+
+          helm upgrade "${APP}" "${CHART_DIR}" \
+            -n "${NAMESPACE}" \
             -f infrastructure/globals/values-common.yaml \
             -f /tmp/secret-values.yaml \
-            -f "$CHART_DIR/values/$ENV_FILE.yaml" \
-            --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/\
-            ${{ matrix.app }}/${{ matrix.app }} \
-            --set image.tag=${{ steps.meta.outputs.version }} \
-            --set global.gitSha=${{ github.sha }} \
+            -f "${CHART_DIR}/values/${ENV_FILE}.yaml" \
+            --set image.repository="${REGISTRY}/${PROJECT_ID}/${APP}/${APP}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --set global.gitSha="${GITHUB_SHA}" \
             --install --atomic --wait --timeout 5m
