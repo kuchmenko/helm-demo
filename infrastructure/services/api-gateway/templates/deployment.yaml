@@ -21,6 +21,6 @@ spec:
           ports:
             - containerPort: {{ .Values.service.port }}
           readinessProbe:
-            httpGet: { path: /healthz, port: "{{ .Values.service.port }}" }
+            httpGet: { path: /healthz, port: {{ .Values.service.port }} }
             initialDelaySeconds: 5
           resources: {{- toYaml .Values.resources | nindent 12 }}
