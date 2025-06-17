@@ -7,6 +7,10 @@ on:
   pull_request:
     paths: ["apps/**", "infra/**"]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   get-affected-apps:
     uses: ./.github/workflows/get-affected-apps.yaml
