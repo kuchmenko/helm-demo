@@ -119,12 +119,12 @@ jobs:
 
           echo "Deploying ${APP} to namespace ${NAMESPACE} using ${ENV_FILE}.yaml"
 
-          helm upgrade "${APP}" "${CHART_DIR}" \
-            -n "${NAMESPACE}" \
-            -f infrastructure/globals/values-common.yaml \
-            -f /tmp/secret-values.yaml \
-            -f "${CHART_DIR}/values/${ENV_FILE}.yaml" \
-            --set image.repository="${REGISTRY}/${PROJECT_ID}/${APP}/${APP}" \
-            --set image.tag="${IMAGE_TAG}" \
-            --set global.gitSha="${GITHUB_SHA}" \
-            --install --atomic --wait --timeout 5m
+          helm upgrade "$APP" "$CHART_DIR" \
+          -n "$NAMESPACE" --create-namespace \
+          -f infrastructure/globals/values-common.yaml \
+          -f /tmp/secret-values.yaml \
+          -f "$CHART_DIR/values/$ENV_FILE.yaml" \
+          --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${APP}/${APP} \
+          --set image.tag="$IMAGE_TAG" \
+          --set global.gitSha="$GITHUB_SHA" \
+          --install --atomic --wait --timeout 5m
