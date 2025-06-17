@@ -77,26 +77,33 @@ jobs:
 
           cat /tmp/secret-values.yaml
 
-      - uses: azure/setup-helm@v4
-      - run: |
+            # ─── 1. ставим gke-gcloud-auth-plugin через apt ───
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
+
+      # ─── 2. получаем креды ───
+      - name: Get GKE credentials
+        run: |
           gcloud container clusters get-credentials "$CLUSTER_NAME" \
             --region "$REGION" --project "$PROJECT_ID"
 
-          helm dependency build infra/services/${{ matrix.app }}
+      # ─── 3. Helm dependency build ───
+      - name: Helm dependency build
+        run: helm dependency build infrastructure/services/${{ matrix.app }}
 
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            ENV_FILE=prd
-            NAMESPACE=prd
-          else
-            ENV_FILE=dev
-            NAMESPACE=default
-          fi
+      # ─── 4. Helm upgrade ───
+      - name: Helm upgrade
+        run: |
+          ENV_FILE=$(test "${{ github.ref_name }}" = "main" && echo prd || echo dev)
+          NAMESPACE=$(test "${{ github.ref_name }}" = "main" && echo prd || echo default)
 
-          helm upgrade ${{ matrix.app }} infra/services/${{ matrix.app }} \
+          helm upgrade ${{ matrix.app }} infrastructure/services/${{ matrix.app }} \
             -n "$NAMESPACE" \
-            -f infra/globals/values-common.yaml \
+            -f infrastructure/globals/values-common.yaml \
             -f /tmp/secret-values.yaml \
-            -f infra/services/${{ matrix.app }}/values/$ENV_FILE.yaml \
+            -f infrastructure/services/${{ matrix.app }}/values/$ENV_FILE.yaml \
             --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/\
             ${{ matrix.app }}/${{ matrix.app }} \
             --set image.tag=${{ steps.meta.outputs.version }} \
