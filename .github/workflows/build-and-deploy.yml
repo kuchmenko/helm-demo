@@ -56,11 +56,16 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
 
+      - name: Export project number
+        run: |
+          echo "PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID \
+          --format='value(projectNumber)')" >> "$GITHUB_ENV"
+
       - id: gsm
         uses: google-github-actions/get-secretmanager-secrets@v2
         with:
           secrets: |
-            COMMON_ENV:latest
+            COMMON_ENV:projects/${{ env.PROJECT_NUMBER }}/secrets/COMMON_ENV/versions/latest
 
       - run: |
           echo "global:"           >  /tmp/secret-values.yaml
