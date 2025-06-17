@@ -85,9 +85,15 @@ jobs:
           gcloud container clusters get-credentials "$CLUSTER_NAME" \
             --region "$REGION" --project "$PROJECT_ID"
 
-      - name: Helm dependency build
-        run: helm dependency build infrastructure/services/${{ matrix.app }}
+      # - name: Helm dependency build
+      #   run: helm dependency build infrastructure/services/${{ matrix.app }}
+
       - name: Helm upgrade / install
+        env: # ← здесь объявляем
+          IMAGE_TAG: ${{ steps.meta.outputs.version }}
+          REGISTRY: ${{ env.REGISTRY }}
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
