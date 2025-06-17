@@ -7,6 +7,5 @@ spec:
   selector: {{ include "lib.selector" . | nindent 4 }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.targetPort | default .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
-      name: http

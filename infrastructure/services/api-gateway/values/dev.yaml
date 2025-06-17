@@ -1,3 +1,9 @@
+replicaCount: 1
+
+resources:
+  limits: { cpu: 500m, memory: 256Mi }
+  requests: { cpu: 100m, memory: 128Mi }
+
 image:
   tag: "dev-{{ .Values.global.gitSha }}"
 

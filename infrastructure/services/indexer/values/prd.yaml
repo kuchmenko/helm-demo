@@ -1,8 +1,0 @@
-replicaCount: 4
-
-resources:
-  limits: { cpu: "1", memory: 1Gi }
-  requests: { cpu: 400m, memory: 512Mi }
-
-config:
-  INDEX_INTERVAL: "30000"

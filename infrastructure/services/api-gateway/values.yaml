@@ -3,7 +3,8 @@ replicaCount: 1
 image:
   tag: "{{ .Values.global.gitSha }}"
 service:
-  port: 3000
+  port: 80          
+  targetPort: 3000
 
 command: ["bun"]
 args: ["dist/index.js"]

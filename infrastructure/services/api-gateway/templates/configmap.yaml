@@ -4,10 +4,8 @@ metadata:
   name: {{ include "lib.fullname" . }}-cfg
   labels: {{ include "lib.labels" . | nindent 4 }}
 data:
-  CONTRACT_ADDRESSES: |
-    {{ .Values.global.contractAddresses | toJson }}
   CHAIN_ID: {{ .Values.global.chainId | quote }}
-  RPC_URL:  {{ .Values.global.rpcUrl  | quote }}
+  RPC_URL: {{ .Values.global.rpcUrl | quote }}
 {{- range $k, $v := .Values.config }}
   {{ $k }}: {{ $v | quote }}
 {{- end }}

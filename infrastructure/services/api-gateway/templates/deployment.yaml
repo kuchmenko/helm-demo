@@ -11,29 +11,20 @@ spec:
     metadata:
       labels: {{ include "lib.selector" . | nindent 8 }}
     spec:
-      terminationGracePeriodSeconds: {{ .Values.terminationGrace }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          envFrom:
-            - configMapRef: { name: {{ include "lib.fullname" . }}-cfg }
-            - secretRef:    { name: {{ include "lib.fullname" . }}-stores }
           ports:
-            - containerPort: {{ .Values.service.targetPort | default .Values.service.port }}
+            - containerPort: {{ .Values.service.targetPort }}
+          envFrom:
+            - configMapRef: 
+                name: {{ include "lib.fullname" . }}-cfg
+            - secretRef:    
+                name: {{ include "lib.fullname" . }}-stores
           readinessProbe:
             httpGet: 
               path: /healthz
-              port: {{ .Values.service.targetPort | default .Values.service.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
-          livenessProbe:
-            httpGet: 
-              path: /healthz
-              port: {{ .Values.service.targetPort | default .Values.service.port }}
-            initialDelaySeconds: 30
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
           resources: {{- toYaml .Values.resources | nindent 12 }}
