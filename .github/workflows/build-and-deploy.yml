@@ -87,17 +87,31 @@ jobs:
 
       - name: Helm dependency build
         run: helm dependency build infrastructure/services/${{ matrix.app }}
-
-      - name: Helm upgrade
+      - name: Helm upgrade / install
         run: |
-          ENV_FILE=$(test "${{ github.ref_name }}" = "main" && echo prd || echo dev)
-          NAMESPACE=$(test "${{ github.ref_name }}" = "main" && echo prd || echo default)
+          set -e
 
-          helm upgrade ${{ matrix.app }} infrastructure/services/${{ matrix.app }} \
+          # 1. путь к чарту (один на приложение)
+          CHART_DIR=infrastructure/services/${{ matrix.app }}
+
+          # 2. качаем зависимости чарта (если есть)
+          helm dependency build "$CHART_DIR"
+
+          # 3. выбираем env-overlay и namespace по ветке
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENV_FILE=prd
+            NAMESPACE=prd
+          else
+            ENV_FILE=dev
+            NAMESPACE=default
+          fi
+
+          # 4. собственно deploy
+          helm upgrade "${{ matrix.app }}" "$CHART_DIR" \
             -n "$NAMESPACE" \
             -f infrastructure/globals/values-common.yaml \
             -f /tmp/secret-values.yaml \
-            -f infrastructure/services/${{ matrix.app }}/values/$ENV_FILE.yaml \
+            -f "$CHART_DIR/values/$ENV_FILE.yaml" \
             --set image.repository=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/\
             ${{ matrix.app }}/${{ matrix.app }} \
             --set image.tag=${{ steps.meta.outputs.version }} \
