@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lib.fullname" . }}
+  labels: {{ include "lib.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{ include "lib.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "lib.selector" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGrace }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          envFrom:
+            - configMapRef: { name: {{ include "lib.fullname" . }}-cfg }
+            - secretRef:    { name: {{ include "lib.fullname" . }}-stores }
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: "{{ .Values.service.port }}" }
+            initialDelaySeconds: 5
+          resources: {{- toYaml .Values.resources | nindent 12 }}

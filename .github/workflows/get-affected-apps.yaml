@@ -1,0 +1,70 @@
+name: get-affected-apps
+
+on:
+  workflow_call:
+    outputs:
+      affected_apps:
+        description: "JSON array of apps that changed"
+        value: ${{ jobs.diff.outputs.affected_apps }}
+      has_affected_apps:
+        description: "true if at least one app changed"
+        value: ${{ jobs.diff.outputs.has_affected_apps }}
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    outputs:
+      affected_apps: ${{ steps.set.outputs.affected_apps }}
+      has_affected_apps: ${{ steps.set.outputs.has_affected_apps }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # нужен полный diff
+
+      - name: Determine base & head SHAs
+        id: sha
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            echo "base=${{ github.event.pull_request.base.sha }}"  >> $GITHUB_OUTPUT
+            echo "head=${{ github.event.pull_request.head.sha }}"  >> $GITHUB_OUTPUT
+          else
+            echo "base=${{ github.event.before }}"                 >> $GITHUB_OUTPUT
+            echo "head=${{ github.sha }}"                          >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find changed files and extract app names
+        id: set
+        run: |
+          base="${{ steps.sha.outputs.base }}"
+          head="${{ steps.sha.outputs.head }}"
+
+          echo "🔍 Diff from $base to $head"
+
+          # список изменённых файлов
+          changed=$(git diff --name-only "$base" "$head")
+
+          declare -A uniq
+          for file in $changed; do
+            if [[ $file == apps/* ]]; then
+              app=$(echo "$file" | cut -d/ -f2)
+              uniq["$app"]=1
+            elif [[ $file == infra/services/* ]]; then
+              app=$(echo "$file" | cut -d/ -f3)
+              uniq["$app"]=1
+            fi
+          done
+
+          # формируем JSON-массив
+          mapfile -t names < <(printf '%s\n' "${!uniq[@]}" | sort -u)
+          if (( ${#names[@]} )); then
+            json=$(printf '%s\n' "${names[@]}" | jq -R . | jq -s .)
+            echo "affected_apps=$json"      >> $GITHUB_OUTPUT
+            echo "has_affected_apps=true"   >> $GITHUB_OUTPUT
+            echo "Found apps: $json"
+          else
+            echo 'affected_apps=[]'         >> $GITHUB_OUTPUT
+            echo "has_affected_apps=false"  >> $GITHUB_OUTPUT
+            echo "No affected apps"
+          fi

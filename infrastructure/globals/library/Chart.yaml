@@ -1,0 +1,5 @@
+apiVersion: v2
+name: library
+type: library
+version: 0.1.0
+description: Common helper templates (fullname, labels, selector)

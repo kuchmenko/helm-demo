@@ -1,0 +1,83 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [develop, master]
+    paths: ["apps/**", "infra/**"]
+  pull_request:
+    paths: ["apps/**", "infra/**"]
+
+jobs:
+  get-affected-apps:
+    uses: ./.github/workflows/get-affected-apps.yaml
+
+  build-deploy:
+    if: ${{ needs.get-affected-apps.outputs.has_affected_apps == 'true' }}
+    needs: get-affected-apps
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.get-affected-apps.outputs.affected_apps) }}
+      fail-fast: false
+
+    environment:
+      name: ${{ github.ref_name == 'master' && 'prod' || 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.app }}/${{ matrix.app }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{ is_default_branch }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./apps/${{ matrix.app }}
+          file: ./apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - id: gsm
+        uses: google-github-actions/get-secretmanager-secrets@v2
+        with:
+          secrets: |
+            COMMON_ENV:latest
+
+      - name: make secret-values
+        run: |
+          echo "global:"           >  /tmp/secret-values.yaml
+          echo "  backingStores:"  >> /tmp/secret-values.yaml
+          jq -r 'to_entries|.[]|"    \(.key): \"\(.value)\""' \
+             <<<"${{ steps.gsm.outputs.COMMON_ENV }}" \
+             >> /tmp/secret-values.yaml
+
+      - uses: azure/setup-helm@v4
+
+      - run: gcloud container clusters get-credentials backend \
+          --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy ${{ matrix.app }}
+        run: |
+          helm upgrade ${{ matrix.app }} infra/services/${{ matrix.app }} \
+            -n ${{ github.ref_name == 'master' && 'prd' || 'default' }} \
+            -f infra/globals/values-common.yaml \
+            -f /tmp/secret-values.yaml \
+            -f infra/services/${{ matrix.app }}/values/${{ github.ref_name == 'master' && 'prd' || 'dev' }}.yaml \
+            --set image.repository=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ matrix.app }}/${{ matrix.app }} \
+            --set image.tag=${{ steps.meta.outputs.version }} \
+            --set global.gitSha=${{ github.sha }} \
+            --install --atomic --wait --timeout 5m
