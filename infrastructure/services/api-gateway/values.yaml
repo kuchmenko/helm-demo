@@ -10,9 +10,7 @@ service:
 
 ingress:
   enabled: false
-  host: ""
   staticIP: ""
-  className: "gce"
 
 command: ["bun"]
 args: ["dist/index.js"]
