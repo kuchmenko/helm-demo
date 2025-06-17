@@ -42,7 +42,6 @@ jobs:
 
           echo "🔍 Diff from $base to $head"
 
-          # список изменённых файлов
           changed=$(git diff --name-only "$base" "$head")
 
           declare -A uniq
@@ -56,10 +55,9 @@ jobs:
             fi
           done
 
-          # формируем JSON-массив
           mapfile -t names < <(printf '%s\n' "${!uniq[@]}" | sort -u)
           if (( ${#names[@]} )); then
-            json=$(printf '%s\n' "${names[@]}" | jq -R . | jq -s .)
+            json=$(printf '%s\n' "${names[@]}" | jq -R . | jq -s -c .)
             echo "affected_apps=$json"      >> $GITHUB_OUTPUT
             echo "has_affected_apps=true"   >> $GITHUB_OUTPUT
             echo "Found apps: $json"
