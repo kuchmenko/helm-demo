@@ -16,7 +16,7 @@ const server = Bun.serve({
   fetch: app.fetch,
 })
 
-//test 7
+//test 8
 
 console.log(`🚀 Api Gateway running on port ${server.port}`)
 
